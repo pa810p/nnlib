@@ -1,6 +1,10 @@
 *.o
+*.obj
 *.a
 *.so
+*.so.*
+*.dylib
+*.dll
 /demo
 /test_nn
 /pynnlib/
