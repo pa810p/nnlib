@@ -1,7 +1,7 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.31)
 project(nnlib VERSION 1.0 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -21,31 +21,43 @@ if(NNLIB_ENABLE_COVERAGE)
 endif()
 
 set(NNLIB_SOURCES
-    activation.cpp
-    layer.cpp
-    neuralnet.cpp
-    neuron.cpp
+    src/activation.cpp
+    src/layer.cpp
+    src/neuralnet.cpp
+    src/neuron.cpp
 )
+
+include(FetchContent)
+FetchContent_Declare(
+    glaze
+    GIT_REPOSITORY https://github.com/stephenberry/glaze.git
+    GIT_TAG v9.0.0
+    GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(glaze)
 
 add_library(nnlib STATIC ${NNLIB_SOURCES})
 add_library(nnlib_shared SHARED ${NNLIB_SOURCES})
 set_target_properties(nnlib nnlib_shared PROPERTIES OUTPUT_NAME nn)
 
 foreach(target IN ITEMS nnlib nnlib_shared)
+    target_compile_features(${target} PUBLIC cxx_std_23)
     target_include_directories(${target}
         PUBLIC
-            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-            $<INSTALL_INTERFACE:include/nnl>
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+            $<INSTALL_INTERFACE:include>
     )
     target_compile_options(${target} PRIVATE -Wall)
+    target_link_libraries(${target} PRIVATE glaze::glaze)
 endforeach()
 
 if(NNLIB_ENABLE_COVERAGE)
     target_compile_options(nnlib PRIVATE --coverage -O0 -g)
 endif()
 
-add_executable(demo main.cpp)
-target_link_libraries(demo PRIVATE nnlib)
+add_executable(demo app/main.cpp)
+target_include_directories(demo PRIVATE app)
+target_link_libraries(demo PRIVATE nnlib glaze::glaze)
 
 if(NNLIB_ENABLE_COVERAGE)
     target_link_options(demo PRIVATE --coverage)
@@ -76,6 +88,12 @@ if(BUILD_TESTING)
     add_nnlib_test(test_layer tests/test_layer.cpp)
     add_nnlib_test(test_neuralnet tests/test_neuralnet.cpp)
     add_nnlib_test(test_neuralnet_scenarios tests/test_neuralnet_scenarios.cpp)
+    add_nnlib_test(test_persistence tests/test_persistence.cpp)
+    target_include_directories(test_persistence PRIVATE app)
+    target_compile_definitions(test_persistence PRIVATE
+        NNLIB_TEST_RESOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/resources"
+    )
+    target_link_libraries(test_persistence PRIVATE glaze::glaze)
 
     if(NNLIB_ENABLE_COVERAGE)
         add_custom_target(coverage
@@ -87,7 +105,7 @@ if(BUILD_TESTING)
                 --rc geninfo_unexecuted_blocks=1
                 --output-file ${CMAKE_BINARY_DIR}/coverage.info
             COMMAND ${LCOV_EXECUTABLE}
-                --extract ${CMAKE_BINARY_DIR}/coverage.info "${CMAKE_SOURCE_DIR}/*.cpp"
+                --extract ${CMAKE_BINARY_DIR}/coverage.info "${CMAKE_SOURCE_DIR}/src/*.cpp"
                 --output-file ${CMAKE_BINARY_DIR}/coverage_filtered.info
             COMMAND ${LCOV_EXECUTABLE} --summary ${CMAKE_BINARY_DIR}/coverage_filtered.info
             COMMAND ${GENHTML_EXECUTABLE}
@@ -106,6 +124,10 @@ install(TARGETS nnlib nnlib_shared
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
-install(FILES activation.h layer.h neuralnet.h neuron.h
+install(FILES
+    include/nnl/activation.h
+    include/nnl/layer.h
+    include/nnl/neuralnet.h
+    include/nnl/neuron.h
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/nnl
 )

@@ -1,0 +1,17 @@
+{
+  "name": "XOR",
+  "layer_sizes": [2, 1],
+  "input_size": 2,
+  "training": [
+    { "input": [0, 1], "target": [1] },
+    { "input": [1, 0], "target": [1] },
+    { "input": [1, 1], "target": [0] },
+    { "input": [0, 0], "target": [0] }
+  ],
+  "checks": [
+    [0.01, 0.99],
+    [0.99, 0.01],
+    [0.99, 0.99],
+    [0.01, 0.01]
+  ]
+}

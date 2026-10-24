@@ -2,7 +2,7 @@
  * File neuron.cpp
  */
 
-#include "neuron.h"
+#include <nnl/neuron.h>
 
 #include <cstdlib>
 #include <stdexcept>
@@ -135,11 +135,24 @@ int Neuron::setActivation ( double (*act) (double), double (*prim) (double))	{
 		return -1;
 	activation = act;
 	activation_prim = prim;
+	if (act == act_sigmoid && prim == act_sigmoid_prim)
+		activation_id = ACTIVATION_SIGMOID_ID;
+	else if (act == act_linear && prim == act_linear_prim)
+		activation_id = ACTIVATION_LINEAR_ID;
+	else if (act == act_jump && prim == act_jump_prim)
+		activation_id = ACTIVATION_JUMP_ID;
+	else if (act == act_sigmoid_bi && prim == act_sigmoid_bi_prim)
+		activation_id = ACTIVATION_SIGMOID_BI_ID;
+	else
+		activation_id.clear();
 	return 0;
 
 }
 
 int Neuron::setActivation (int act) {
+	const std::string_view id = activationId(act);
+	if (id.empty())
+		return -1;
 
 	switch (act)	{
 		case ACT_SIGMOID:
@@ -161,8 +174,19 @@ int Neuron::setActivation (int act) {
 		default:
 			return -1;
 		}
+	activation_id = id;
 	return 0;
 }	
+
+int Neuron::setActivation(std::string_view id) {
+	const auto functions = resolveActivation(id);
+	if (!functions)
+		return -1;
+	activation = functions->function;
+	activation_prim = functions->derivative;
+	activation_id = id;
+	return 0;
+}
 
 void Neuron::setMomentum (double mom)	{
 

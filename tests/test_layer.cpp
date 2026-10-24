@@ -3,7 +3,7 @@
 #include <span>
 #include <stdexcept>
 
-#include "layer.h"
+#include <nnl/layer.h>
 
 TEST(NeuralLayerTest, ForwardsInputsThroughEveryNeuron) {
     NeuralLayer layer;

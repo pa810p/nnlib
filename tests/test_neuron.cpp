@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <span>
 
-#include "neuron.h"
+#include <nnl/neuron.h>
 
 TEST(NeuronTest, CalculatesOutputFromInputs) {
     Neuron neuron;

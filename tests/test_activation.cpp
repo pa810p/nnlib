@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "activation.h"
+#include <nnl/activation.h>
 
 TEST(ActivationTest, ComputesExpectedValues) {
     EXPECT_DOUBLE_EQ(act_sigmoid(0.0), 0.5);

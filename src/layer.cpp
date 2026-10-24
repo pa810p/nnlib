@@ -2,7 +2,7 @@
  * File layer.cpp
  */
 
-#include "layer.h"
+#include <nnl/layer.h>
 
 #include <stdexcept>
 #include <vector>
@@ -155,9 +155,21 @@ int NeuralLayer::setActivation (double (*act) (double), double (*prim) (double))
 
 }
 
+int NeuralLayer::setActivation(std::string_view id) {
+	for (int i = 0; i < layer_size; ++i)
+		if (neurons[i].setActivation(id) == -1)
+			return -1;
+	return 0;
+}
+
 void NeuralLayer::setEta (double eta)	{
 
 	for (int i=0; i<layer_size; i++)
 		neurons[i].setEta (eta);
 	
+}
+
+void NeuralLayer::setMomentum(double momentum) {
+	for (int i = 0; i < layer_size; ++i)
+		neurons[i].setMomentum(momentum);
 }
