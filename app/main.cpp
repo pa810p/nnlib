@@ -9,10 +9,12 @@
 #include <iomanip>
 #include <iostream>
 #include <iterator>
+#include <sstream>
 #include <stdexcept>
 #include <vector>
 
 #include <nnl/neuralnet.h>
+#include "logger.h"
 #include "training_data.h"
 
 namespace {
@@ -38,6 +40,9 @@ std::vector<double> flatten_training_targets(const TrainingData& data) {
 
 int main() {
 	try {
+		const char* configured_level = std::getenv("NNLIB_LOG_LEVEL");
+		Logger logger(std::clog, Logger::parse_level(
+			configured_level == nullptr ? "INFO" : configured_level));
 		const std::string json{std::istreambuf_iterator<char>(std::cin),
 		                       std::istreambuf_iterator<char>()};
 		const TrainingData data = parse_training_data(json);
@@ -59,7 +64,27 @@ int main() {
 				std::cout << value << ' ';
 			std::cout << '\n';
 		}
-		nn.Train(sample_count, inputs, expected_outputs, 0.000001, 50000);
+		std::size_t completed_epochs = 0;
+		double final_error = 0.0;
+		const NeuralNet::TrainingOptions training_options{
+			.target_rmse = 0.000001,
+			.max_epochs = 50000,
+			.on_epoch = [&](std::size_t epoch, double error) {
+			         completed_epochs = epoch;
+			         final_error = error;
+			         if (!logger.enabled(LogLevel::DEBUG))
+				         return;
+			         std::ostringstream message;
+			         message << "epoch=" << epoch << " training_rmse="
+					         << std::fixed << std::setprecision(8) << error;
+			         logger.debug(message.str());
+			}
+		};
+		nn.Train(sample_count, inputs, expected_outputs, training_options);
+		std::ostringstream summary;
+		summary << "training complete: epochs=" << completed_epochs
+		        << " training_rmse=" << std::fixed << std::setprecision(8) << final_error;
+		logger.info(summary.str());
 
 		constexpr int output_precision = 4;
 		constexpr double output_scale = 10000.0;

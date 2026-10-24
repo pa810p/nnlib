@@ -56,6 +56,12 @@ Run the demonstration using the included training data:
 ```
 
 The datasets are available as JSON files in `tests/resources/`.
+Training completion is logged to stderr at INFO level. To inspect the RMSE
+after each epoch, enable DEBUG logging and optionally save it to a file:
+
+```sh
+NNLIB_LOG_LEVEL=DEBUG ./build/demo < tests/resources/trains2.json 2> training.log
+```
 
 ## Testing
 

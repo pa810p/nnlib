@@ -164,6 +164,15 @@ double NeuralNet::TrainEpoch(int sample_count, std::span<const double> inputs,
 
 void NeuralNet::Train(int sample_count, std::span<const double> inputs,
                       std::span<const double> outputs, double error, long epochs) {
+	const TrainingOptions options{
+		.target_rmse = error,
+		.max_epochs = epochs
+	};
+	Train(sample_count, inputs, outputs, options);
+}
+
+void NeuralNet::Train(int sample_count, std::span<const double> inputs,
+                      std::span<const double> outputs, const TrainingOptions& options) {
 	if (sample_count <= 0)
 		throw std::invalid_argument("Training sample count must be positive");
 
@@ -174,8 +183,16 @@ void NeuralNet::Train(int sample_count, std::span<const double> inputs,
 		throw std::invalid_argument("Training output size does not match sample count and network output size");
 
 	double current_error = TrainEpoch(sample_count, inputs, outputs);
-	for (long epoch = 0; current_error > error && epoch < epochs; ++epoch)
+	std::size_t completed_epochs = 1;
+	if (options.on_epoch)
+		options.on_epoch(completed_epochs, current_error);
+	for (long epoch = 0; current_error > options.target_rmse &&
+	                     epoch < options.max_epochs; ++epoch) {
 		current_error = TrainEpoch(sample_count, inputs, outputs);
+		++completed_epochs;
+		if (options.on_epoch)
+			options.on_epoch(completed_epochs, current_error);
+	}
 }
 
 int NeuralNet::setActivation(int layer, int activation) {

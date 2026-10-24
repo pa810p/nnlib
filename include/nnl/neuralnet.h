@@ -8,12 +8,21 @@
 
 #include <cstddef>
 #include <filesystem>
+#include <functional>
 #include <span>
 #include <string_view>
 #include <vector>
 #include "layer.h"
 
 class NeuralNet {
+	public:
+		using TrainingProgressCallback = std::function<void(std::size_t, double)>;
+		struct TrainingOptions {
+			double target_rmse = 0.0;
+			long max_epochs = 0;
+			TrainingProgressCallback on_epoch;
+		};
+
 	private:
 		std::size_t input_size = 0;
 		std::size_t last_layer_size = 0;
@@ -31,6 +40,8 @@ class NeuralNet {
 		NeuralNet& operator=(NeuralNet&&) noexcept = default;
 		void Train(int sample_count, std::span<const double> inputs,
 		           std::span<const double> outputs, double error, long epochs);
+		void Train(int sample_count, std::span<const double> inputs,
+		           std::span<const double> outputs, const TrainingOptions& options);
 		void Check(std::span<const double> inputs, std::span<double> outputs);
 		void setAllActivation (int);
 		void setAllActivation (double (*) (double), double (*) (double));
