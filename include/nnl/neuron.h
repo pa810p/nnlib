@@ -6,6 +6,8 @@
 #define _NEURON_H
 
 #include <span>
+#include <string>
+#include <string_view>
 #include <vector>
 
 #include "activation.h"
@@ -21,11 +23,14 @@ class Neuron {
 
 		double (*activation) (double) = nullptr; // printer to activation function
 		double (*activation_prim) (double) = nullptr;
+		std::string activation_id;
 		
 		int inputs = 0; // number of inputs to neuron.
 		double constant = 0; // constant signal (eg. 1)
 		double ni = 0; // speed of training
 		double inertia = 0;
+		friend class NeuralNet;
+		friend class NeuralLayer;
 	public:
 		Neuron() = default;
 		~Neuron() = default;
@@ -44,6 +49,7 @@ class Neuron {
 		double countDelta (double);
 		int setActivation (double (*) (double), double (*) (double));
 		int setActivation (int);
+		int setActivation(std::string_view);
 		void setMomentum (double);
 		void setEta (double);
 	};	

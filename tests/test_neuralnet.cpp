@@ -3,7 +3,7 @@
 #include <span>
 #include <stdexcept>
 
-#include "neuralnet.h"
+#include <nnl/neuralnet.h>
 
 TEST(NeuralNetApiTest, RejectsInvalidConstructorArguments) {
     int valid_size[] = {1};

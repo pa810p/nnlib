@@ -23,10 +23,13 @@ The default configuration uses sigmoid activation in hidden layers and linear ac
 
 ## Building
 
-The project uses CMake 3.20 or newer and requires a compiler with C++20
-support. The build enforces the C++20 standard (`-std=c++20` or the compiler's
-equivalent). Configure and build the demonstration executable, shared library,
-and static library with:
+The project uses CMake 3.31 or newer and requires C++23 support. Glaze 9.0.0
+documents tested compiler versions of GCC 13+, Clang 18+, and MSVC 14.50+.
+Check the installed CMake version with `cmake --version`; install a newer
+version from [cmake.org/download](https://cmake.org/download/) if needed. The
+build fetches the pinned Glaze release through CMake FetchContent. Configure
+and build the demonstration executable, shared library, static library, and
+tests with:
 
 ```sh
 cmake -S . -B build
@@ -34,15 +37,25 @@ cmake --build build
 ```
 
 The library's input and output buffer APIs use `std::span` and reject spans
-whose sizes do not match the configured network dimensions.
+whose sizes do not match the configured network dimensions. Neural network
+models are persisted as versioned JSON files; custom activations must be
+registered with a stable identifier before they can be saved or loaded.
+
+Save a trained model with `network.save("model.json")` and restore it with
+`NeuralNet::load("model.json")`. The JSON stores topology, activation IDs,
+weights, biases, learning rates, momentum coefficients, and momentum buffers.
+Register custom activation functions with `registerActivation` and select them
+by their `custom.*` ID before saving; register the same ID in the loading
+application before loading the model. Function pointers are never written to
+the model file.
 
 Run the demonstration using the included training data:
 
 ```sh
-./build/demo < trains
+./build/demo < tests/resources/trains.json
 ```
 
-An additional dataset, `trains2`, is also included.
+The datasets are available as JSON files in `tests/resources/`.
 
 ## Testing
 
@@ -97,16 +110,17 @@ The implementation is organized into a few core components:
 
 | Files | Purpose |
 |---|---|
-| `neuron.h`, `neuron.cpp` | Neuron calculations and connection weights |
-| `layer.h`, `layer.cpp` | Layers of neurons |
-| `activation.h`, `activation.cpp` | Activation functions |
-| `neuralnet.h`, `neuralnet.cpp` | Network construction, propagation and training |
-| `main.cpp` | Demonstration program |
+| `include/nnl/neuron.h`, `src/neuron.cpp` | Neuron calculations and connection weights |
+| `include/nnl/layer.h`, `src/layer.cpp` | Layers of neurons |
+| `include/nnl/activation.h`, `src/activation.cpp` | Activation functions |
+| `include/nnl/neuralnet.h`, `src/neuralnet.cpp` | Network construction, propagation and training |
+| `app/main.cpp` | Demonstration program |
 | `tests/test_activation.cpp` | Activation function tests |
 | `tests/test_neuron.cpp` | Neuron unit tests |
 | `tests/test_layer.cpp` | Layer unit tests |
 | `tests/test_neuralnet.cpp` | Network API tests |
 | `tests/test_neuralnet_scenarios.cpp` | End-to-end network training scenarios |
+| `tests/test_persistence.cpp` | Model round-trip and validation tests |
 
 The code is small enough to follow from the individual neuron calculations through layer processing to network training.
 

@@ -4,7 +4,7 @@
 #include <span>
 #include <vector>
 
-#include "neuralnet.h"
+#include <nnl/neuralnet.h>
 
 namespace {
 

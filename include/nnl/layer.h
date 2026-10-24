@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <span>
+#include <string_view>
 #include "neuron.h"
 
 class NeuralLayer {
@@ -14,6 +15,7 @@ class NeuralLayer {
 		std::unique_ptr<Neuron[]> neurons;
 		int layer_size = 0;
 		int input_size = 0;
+		friend class NeuralNet;
 		
 	public:
 		NeuralLayer() = default;
@@ -35,7 +37,9 @@ class NeuralLayer {
 		void countDelta(const NeuralLayer& next_layer);
 		int setActivation (int);
 		int setActivation (double (*) (double), double (*) (double));
+		int setActivation(std::string_view);
 		void setEta (double);
+		void setMomentum(double);
 	};
 
 #endif	
