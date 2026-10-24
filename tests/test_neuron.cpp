@@ -1,5 +1,8 @@
 #include <gtest/gtest.h>
 
+#include <stdexcept>
+#include <span>
+
 #include "neuron.h"
 
 TEST(NeuronTest, CalculatesOutputFromInputs) {
@@ -56,4 +59,12 @@ TEST(NeuronTest, RejectsUnknownActivationWhenSettingActivation) {
     ASSERT_EQ(neuron.Initialize(1, 0.5, 0.5, ACT_LINEAR, 0.0, 0.1), 0);
 
     EXPECT_EQ(neuron.setActivation(999), -1);
+}
+
+TEST(NeuronTest, RejectsInputSpansWithIncorrectSize) {
+    Neuron neuron;
+    ASSERT_EQ(neuron.Initialize(2, 0.5, 0.5, ACT_LINEAR, 0.0, 0.1), 0);
+    double input[] = {1.0};
+
+    EXPECT_THROW(neuron.Train(std::span<const double>(input)), std::invalid_argument);
 }

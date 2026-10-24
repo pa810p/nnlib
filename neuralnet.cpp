@@ -1,165 +1,125 @@
 /*
  * File neuralnet.cpp
  */
- 
 
 #include "neuralnet.h"
+
+#include <cmath>
 #include <stdexcept>
+#include <vector>
 
-
-NeuralNet::NeuralNet (int lc, int * ls, int inputs, double min_weights, double max_weights, double eta) : layers(NULL) {
-// lc number of the layers
-//	* ls each layer size
-//	inputs first layer each neuron inputs
-//	min_weights minimal randomized weights
-//	max_weights maximal randomized weights
-// ep maximal number of epochs
-
-	int i;
-	if (lc <= 0 || ls == NULL || inputs <= 0)
+NeuralNet::NeuralNet(std::span<const int> layer_sizes, int inputs,
+                     double min_weights, double max_weights, double eta) {
+	if (layer_sizes.empty() || inputs <= 0)
 		throw std::invalid_argument("NeuralNet requires positive layer and input counts");
-	for (i=0; i<lc; i++)
-		if (*(ls+i) <= 0)
+
+	for (const int layer_size : layer_sizes)
+		if (layer_size <= 0)
 			throw std::invalid_argument("NeuralNet layer sizes must be positive");
-	layer_count = lc;
-	input_size = inputs;
-	
-	if ((layers = new NeuralLayer [layer_count])==NULL)	{
-		printf("Error while allocate memory for layer\n");
-		exit(1);
-		}
 
-	for (i=0;i<lc;i++)	{
-		if (i==0)	{ // first layer
-			if ((layers+i)->Initialize(*(ls+i), inputs, min_weights, max_weights, ACT_SIGMOID, 1, eta)==-1)	{
-				printf("Error while initializing input layer");
-				exit(1);
-				};
-			}
-		else if (i!=lc-1){ 
-			if ((layers+i)->Initialize(*(ls+i), *(ls+i-1), min_weights, max_weights, ACT_SIGMOID,1, eta)==-1) {
-				printf("Error while initializing hidden layers");
-				exit(1);
-				}
-			}
-		else { // last layer
-			if ((layers+i)->Initialize(*(ls+i), *(ls+i-1), min_weights, max_weights, ACT_LINEAR, 1, eta)==-1)	{
-				printf("Error while initializing output layer");
-				exit(1);
-				}
-			}	
-		}
-	
-	last_layer = layers+layer_count-1;
-	last_layer_size = last_layer->getLayerSize();
+	input_size = static_cast<std::size_t>(inputs);
+	layers.resize(layer_sizes.size());
 
+	for (std::size_t i = 0; i < layer_sizes.size(); ++i) {
+		const int layer_inputs = (i == 0) ? inputs : layer_sizes[i - 1];
+		const int activation = (i == 0) ? ACT_SIGMOID :
+			(i + 1 == layer_sizes.size() ? ACT_LINEAR : ACT_SIGMOID);
+
+		if (layers[i].Initialize(layer_sizes[i], layer_inputs, min_weights,
+		                         max_weights, activation, 1, eta) != 0)
+			throw std::runtime_error("Failed to initialize neural network layer");
+	}
+
+	last_layer_size = static_cast<std::size_t>(layers.back().getLayerSize());
 }
 
-NeuralNet::NeuralNet (int lc, int * ls, int inputs)
-	: NeuralNet(lc, ls, inputs, 0., 1., 0.5) {}
+NeuralNet::NeuralNet(std::span<const int> layer_sizes, int inputs)
+	: NeuralNet(layer_sizes, inputs, 0.0, 1.0, 0.5) {}
 
-NeuralNet::~NeuralNet()
-{
-	if (layers!=NULL)
-		delete [] layers;
+void NeuralNet::Check(std::span<const double> inputs, std::span<double> outputs) {
+	if (inputs.size() != input_size)
+		throw std::invalid_argument("NeuralNet input size does not match initialized input count");
+	if (outputs.size() != last_layer_size)
+		throw std::invalid_argument("NeuralNet output size does not match output layer size");
+
+	layers.front().Train(inputs);
+	for (std::size_t i = 1; i < layers.size(); ++i)
+		layers[i].Train(layers[i - 1]);
+
+	for (std::size_t i = 0; i < last_layer_size; ++i)
+		outputs[i] = layers.back().getOutput(static_cast<int>(i));
 }
 
-double * NeuralNet::Check (double * inputs, double * outputs)	{
+double NeuralNet::TrainEpoch(int sample_count, std::span<const double> inputs,
+                             std::span<const double> outputs) {
+	double sum = 0.0;
+	std::vector<double> error(last_layer_size);
 
-	int i;
-	
-	layers->Train(inputs); // trains first layer
-	for (i=1;i<layer_count;i++)	{
-		(layers+i)->Train(layers+i-1);
-		}
+	for (int sample = 0; sample < sample_count; ++sample) {
+		const auto input_offset = static_cast<std::size_t>(sample) * input_size;
+		const auto output_offset = static_cast<std::size_t>(sample) * last_layer_size;
+		layers.front().Train(inputs.subspan(input_offset, input_size));
 
-	for (i=0;i<(layers+layer_count-1)->getLayerSize();i++)
-		*(outputs+i)=(layers+layer_count-1)->getOutput(i);
+		for (std::size_t i = 1; i < layers.size(); ++i)
+			layers[i].Train(layers[i - 1]);
 
-return outputs;
+		layers.back().countLastDelta(
+			outputs.subspan(output_offset, last_layer_size), error);
+
+		for (std::size_t i = layers.size() - 1; i > 0; --i)
+			layers[i - 1].countDelta(layers[i]);
+
+		for (NeuralLayer& layer : layers)
+			layer.Modify();
+
+		for (const double value : error)
+			sum += value * value;
+	}
+
+	return std::sqrt(sum / (static_cast<double>(sample_count) * last_layer_size));
 }
 
+void NeuralNet::Train(int sample_count, std::span<const double> inputs,
+                      std::span<const double> outputs, double error, long epochs) {
+	if (sample_count <= 0)
+		throw std::invalid_argument("Training sample count must be positive");
 
-double NeuralNet::TrainEpoch(int counts, double * inputs, double * outputs)	{
+	const auto samples = static_cast<std::size_t>(sample_count);
+	if (inputs.size() % input_size != 0 || inputs.size() / input_size != samples)
+		throw std::invalid_argument("Training input size does not match sample count and network input size");
+	if (outputs.size() % last_layer_size != 0 || outputs.size() / last_layer_size != samples)
+		throw std::invalid_argument("Training output size does not match sample count and network output size");
 
-	int i,j;
-	double sum=0;
-
-	double * error = new double [last_layer_size];
-	
-	for (j=0;j<counts;j++)	{
-
-		layers->Train(inputs+input_size*j); // train first layer
-		
-		for (i=1;i<layer_count;i++)
-			(layers+i)->Train(layers+i-1);
-
-		last_layer->countLastDelta(outputs+last_layer_size*j,error);
-
-		for (i=layer_count-2;i>=0;i--)
-			(layers+i)->countDelta(layers+i+1);
-
-		for (i=0;i<layer_count;i++)
-			(layers+i)->Modify();
-
-		for (i=0;i<last_layer_size;i++)
-			sum+=(*(error+i)**(error+i));
-
-		}
-
-	delete [] error;
-
-	return sqrt(sum/(counts*last_layer_size));
-
+	double current_error = TrainEpoch(sample_count, inputs, outputs);
+	for (long epoch = 0; current_error > error && epoch < epochs; ++epoch)
+		current_error = TrainEpoch(sample_count, inputs, outputs);
 }
 
-
-void NeuralNet::Train (int counts, double * inputs, double * outputs, double err, long epochs)	{
-
-	double krit;
-	long i=0;
-
-	krit = TrainEpoch(counts, inputs, outputs);
-	
-	while ((krit>err)&&(i<epochs))	{
-		krit = TrainEpoch(counts, inputs, outputs);
-		i++;
-		}
-
-	return;
-
+int NeuralNet::setActivation(int layer, int activation) {
+	if (layer < 0 || static_cast<std::size_t>(layer) >= layers.size())
+		return -1;
+	return layers[static_cast<std::size_t>(layer)].setActivation(activation);
 }
 
-int NeuralNet::setActivation (int i, int act)	{
-
-	if ((i<0)||(i>=layer_count)) return -1;
-	else return (layers+i)->setActivation(act);
-
+int NeuralNet::setActivation(int layer, double (*activation)(double),
+                             double (*derivative)(double)) {
+	if (layer < 0 || static_cast<std::size_t>(layer) >= layers.size())
+		return -1;
+	return layers[static_cast<std::size_t>(layer)].setActivation(activation, derivative);
 }
 
-int NeuralNet::setActivation (int i, double (*act) (double), double (*prim)(double))	{
-
-	if ((i<0)||(i>=layer_count)) return -1;
-	else return (layers+i)->setActivation(act,prim);
-
+void NeuralNet::setAllActivation(int activation) {
+	for (NeuralLayer& layer : layers)
+		layer.setActivation(activation);
 }
 
-void NeuralNet::setAllActivation (int act)	{
-
-	for (int i=0;i<layer_count;i++)
-		(layers+i)->setActivation(act);
-
+void NeuralNet::setAllActivation(double (*activation)(double),
+                                 double (*derivative)(double)) {
+	for (NeuralLayer& layer : layers)
+		layer.setActivation(activation, derivative);
 }
 
-void NeuralNet::setAllActivation (double (*act) (double), double (*prim) (double))	{
-
-	for (int i=0;i<layer_count;i++)
-		(layers+i)->setActivation(act,prim);
-
-}		
-
-void NeuralNet::setEta (double eta)	{
-	
-	for (int i=0;i<layer_count;i++)	
-		(layers+i)->setEta(eta);
+void NeuralNet::setEta(double eta) {
+	for (NeuralLayer& layer : layers)
+		layer.setEta(eta);
 }

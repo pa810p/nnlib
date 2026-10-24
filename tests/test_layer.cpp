@@ -1,5 +1,8 @@
 #include <gtest/gtest.h>
 
+#include <span>
+#include <stdexcept>
+
 #include "layer.h"
 
 TEST(NeuralLayerTest, ForwardsInputsThroughEveryNeuron) {
@@ -22,7 +25,7 @@ TEST(NeuralLayerTest, TrainsFromPreviousLayerOutputs) {
 
     double input[] = {2.0};
     ASSERT_EQ(previous.Train(input), 0);
-    ASSERT_EQ(next.Train(&previous), 0);
+    ASSERT_EQ(next.Train(previous), 0);
 
     EXPECT_DOUBLE_EQ(previous.getOutput(0), 1.0);
     EXPECT_DOUBLE_EQ(next.getOutput(0), 0.25);
@@ -53,12 +56,12 @@ TEST(NeuralLayerTest, PropagatesWeightedDeltaToPreviousLayer) {
 
     double input[] = {2.0};
     ASSERT_EQ(previous.Train(input), 0);
-    ASSERT_EQ(next.Train(&previous), 0);
+    ASSERT_EQ(next.Train(previous), 0);
 
     double desired[] = {1.5};
     double errors[1] = {};
     next.countLastDelta(desired, errors);
-    previous.countDelta(&next);
+    previous.countDelta(next);
 
     EXPECT_DOUBLE_EQ(errors[0], 1.25);
     EXPECT_DOUBLE_EQ(next.getNeuronDelta(0), 1.25);
@@ -90,4 +93,21 @@ TEST(NeuralLayerTest, PropagatesNeuronInitializationFailure) {
     NeuralLayer layer;
 
     EXPECT_EQ(layer.Initialize(1, 1, 0.5, 0.5, 999, 0.0, 0.1), -1);
+}
+
+TEST(NeuralLayerTest, RejectsInputAndOutputSpansWithIncorrectSizes) {
+    NeuralLayer layer;
+    NeuralLayer previous;
+    NeuralLayer mismatched_next;
+    ASSERT_EQ(layer.Initialize(1, 2, 0.5, 0.5, ACT_LINEAR, 0.0, 0.1), 0);
+    ASSERT_EQ(previous.Initialize(1, 1, 0.5, 0.5, ACT_LINEAR, 0.0, 0.1), 0);
+    ASSERT_EQ(mismatched_next.Initialize(1, 2, 0.5, 0.5, ACT_LINEAR, 0.0, 0.1), 0);
+    double short_input[] = {1.0};
+    std::span<const double> short_desired;
+    std::span<double> short_error;
+
+    EXPECT_THROW(layer.Train(std::span<const double>(short_input)), std::invalid_argument);
+    EXPECT_THROW(layer.Train(previous), std::invalid_argument);
+    EXPECT_THROW(layer.countLastDelta(short_desired, short_error), std::invalid_argument);
+    EXPECT_THROW(layer.countDelta(mismatched_next), std::invalid_argument);
 }

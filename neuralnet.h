@@ -6,25 +6,27 @@
 #define _NEURALNET_H
 
 
-#include <stdio.h>
+#include <cstddef>
+#include <span>
+#include <vector>
 #include "layer.h"
 
 class NeuralNet {
 	private:
-		int layer_count;
-		int input_size;
-		int last_layer_size;
-		NeuralLayer * layers; // pointer to layers of neuralnet
-		NeuralLayer * last_layer;
-		double TrainEpoch(int, double *, double *);
+		std::size_t input_size = 0;
+		std::size_t last_layer_size = 0;
+		std::vector<NeuralLayer> layers;
+		double TrainEpoch(int, std::span<const double>, std::span<const double>);
 	public:
-		NeuralNet (int, int *, int, double, double, double);
-		NeuralNet (int, int *, int);
-		~NeuralNet ();
+		NeuralNet(std::span<const int> layer_sizes, int inputs,
+		          double min_weights, double max_weights, double eta);
+		NeuralNet(std::span<const int> layer_sizes, int inputs);
+		~NeuralNet () = default;
 		NeuralNet(const NeuralNet&) = delete;
 		NeuralNet& operator=(const NeuralNet&) = delete;
-		void Train (int, double *, double *, double, long);
-		double * Check (double *, double *);
+		void Train(int sample_count, std::span<const double> inputs,
+		           std::span<const double> outputs, double error, long epochs);
+		void Check(std::span<const double> inputs, std::span<double> outputs);
 		void setAllActivation (int);
 		void setAllActivation (double (*) (double), double (*) (double));
 		int setActivation (int, int);

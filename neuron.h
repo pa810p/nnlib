@@ -5,38 +5,37 @@
 #ifndef _NEURON_H
 #define _NEURON_H
 
-#include <stdlib.h>
-#include <time.h>
-#include <math.h>
+#include <span>
+#include <vector>
 
 #include "activation.h"
 
 class Neuron {
 	private:
-		double * w;
-		double * x;
-		double delta;
-		double * momentum; // needed by momentum
-		double z; // weighted sum
-		double y; // output of the neuron
+		std::vector<double> w;
+		std::vector<double> x;
+		double delta = 0;
+		std::vector<double> momentum; // needed by momentum
+		double z = 0; // weighted sum
+		double y = 0; // output of the neuron
 
-		double (*activation) (double) ; // printer to activation function
-		double (*activation_prim) (double);
+		double (*activation) (double) = nullptr; // printer to activation function
+		double (*activation_prim) (double) = nullptr;
 		
-		int inputs; // number of inputs to neuron.
-		double constant; // constant signal (eg. 1)
-		double ni; // speed of training
-		double inertia;
+		int inputs = 0; // number of inputs to neuron.
+		double constant = 0; // constant signal (eg. 1)
+		double ni = 0; // speed of training
+		double inertia = 0;
 	public:
-		Neuron ();
-		~Neuron ();
+		Neuron() = default;
+		~Neuron() = default;
 		Neuron(const Neuron&) = delete;
 		Neuron& operator=(const Neuron&) = delete;
 		
 		int Initialize (int, double, double, int, double, double); // min range, max range
 		int Initialize (int);
 		
-		double Train (double *);
+		double Train (std::span<const double>);
 		double Modify ();
 		double getWeight (int) const;
 		double getDelta () const;

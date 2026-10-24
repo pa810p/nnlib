@@ -23,13 +23,18 @@ The default configuration uses sigmoid activation in hidden layers and linear ac
 
 ## Building
 
-The project uses CMake 3.20 or newer and a C++20 compiler. Configure and build
-the demonstration executable, shared library, and static library with:
+The project uses CMake 3.20 or newer and requires a compiler with C++20
+support. The build enforces the C++20 standard (`-std=c++20` or the compiler's
+equivalent). Configure and build the demonstration executable, shared library,
+and static library with:
 
 ```sh
 cmake -S . -B build
 cmake --build build
 ```
+
+The library's input and output buffer APIs use `std::span` and reject spans
+whose sizes do not match the configured network dimensions.
 
 Run the demonstration using the included training data:
 
@@ -74,8 +79,10 @@ From the project root, run:
 
 The script configures a separate instrumented build, runs the tests, and
 generates the report. Open
-`build-coverage/coverage_html/index.html` for the HTML report; raw lcov data is
-saved to `build-coverage/coverage.info`.
+`build-coverage/coverage_html/index.html` for the HTML report. Coverage is
+filtered to the library's `.cpp` implementation files and saved to
+`build-coverage/coverage_filtered.info`; the unfiltered capture is in
+`build-coverage/coverage.info`.
 
 Equivalent manual commands are:
 

@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <cstdlib>
+#include <span>
 #include <vector>
 
 #include "neuralnet.h"
@@ -11,15 +12,20 @@ double rand_range(double lo, double hi) {
     return lo + (hi - lo) * (static_cast<double>(rand()) / (static_cast<double>(RAND_MAX) + 1.0));
 }
 
-double evaluate_mse(NeuralNet& nn, double* inputs, const double* targets,
+double evaluate_mse(NeuralNet& nn, std::span<const double> inputs,
+                    std::span<const double> targets,
                     int samples, int input_size, int output_size) {
-    std::vector<double> predictions(output_size);
+    std::vector<double> predictions(static_cast<std::size_t>(output_size));
     double sum = 0.0;
 
     for (int i = 0; i < samples; ++i) {
-        nn.Check(inputs + i * input_size, predictions.data());
+        const auto input_offset = static_cast<std::size_t>(i * input_size);
+        const auto output_offset = static_cast<std::size_t>(i * output_size);
+        nn.Check(inputs.subspan(input_offset, static_cast<std::size_t>(input_size)),
+                 predictions);
         for (int j = 0; j < output_size; ++j) {
-            const double error = targets[i * output_size + j] - predictions[j];
+            const double error = targets[output_offset + static_cast<std::size_t>(j)] -
+                                 predictions[static_cast<std::size_t>(j)];
             sum += error * error;
         }
     }
@@ -42,7 +48,7 @@ TEST(NeuralNetScenarioTest, LearnsOrDataset) {
     double targets[samples] = {0.0, 1.0, 1.0, 1.0};
 
     srand(7);
-    NeuralNet nn(2, layer_sizes, input_size, -0.25, 0.25, 0.6);
+    NeuralNet nn(layer_sizes, input_size, -0.25, 0.25, 0.6);
     nn.Train(samples, inputs, targets, 1e-5, 60000);
 
     EXPECT_LT(evaluate_mse(nn, inputs, targets, samples, input_size, 1), 0.03);
@@ -67,7 +73,7 @@ TEST(NeuralNetScenarioTest, LearnsLinearRegressionDataset) {
     };
 
     srand(11);
-    NeuralNet nn(1, layer_sizes, input_size, -0.25, 0.25, 0.2);
+    NeuralNet nn(layer_sizes, input_size, -0.25, 0.25, 0.2);
     nn.setAllActivation(ACT_LINEAR);
     nn.Train(samples, inputs, targets, 1e-8, 30000);
 
@@ -97,7 +103,7 @@ TEST(NeuralNetScenarioTest, LearnsLinearIdentityDataset) {
     };
 
     srand(19);
-    NeuralNet nn(1, layer_sizes, input_size, -0.25, 0.25, 0.15);
+    NeuralNet nn(layer_sizes, input_size, -0.25, 0.25, 0.15);
     nn.setAllActivation(ACT_LINEAR);
     nn.Train(samples, inputs, targets, 1e-8, 40000);
 
@@ -127,7 +133,7 @@ TEST(NeuralNetScenarioTest, LearnsRandomLinearSystemWithSingleOutput) {
     }
 
     srand(31);
-    NeuralNet nn(1, layer_sizes, input_size, -0.25, 0.25, 0.08);
+    NeuralNet nn(layer_sizes, input_size, -0.25, 0.25, 0.08);
     nn.setAllActivation(ACT_LINEAR);
     nn.Train(samples, inputs, targets, 1e-8, 60000);
 
@@ -155,7 +161,7 @@ TEST(NeuralNetScenarioTest, LearnsRandomLinearSystemWithTwoOutputs) {
     }
 
     srand(41);
-    NeuralNet nn(1, layer_sizes, input_size, -0.25, 0.25, 0.05);
+    NeuralNet nn(layer_sizes, input_size, -0.25, 0.25, 0.05);
     nn.setAllActivation(ACT_LINEAR);
     nn.Train(samples, inputs, targets, 1e-8, 90000);
 

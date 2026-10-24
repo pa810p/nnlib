@@ -4,6 +4,7 @@ project(nnlib VERSION 1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(CTest)
 
@@ -61,7 +62,11 @@ if(BUILD_TESTING)
         if(NNLIB_ENABLE_COVERAGE)
             target_link_options(${target} PRIVATE --coverage)
         endif()
-        gtest_discover_tests(${target} TEST_PREFIX "${target}.")
+        gtest_discover_tests(
+            ${target}
+            TEST_PREFIX "${target}."
+            DISCOVERY_MODE PRE_TEST
+        )
         set(NNLIB_TEST_TARGETS ${NNLIB_TEST_TARGETS} ${target} PARENT_SCOPE)
     endfunction()
 
@@ -81,9 +86,12 @@ if(BUILD_TESTING)
                 --capture
                 --rc geninfo_unexecuted_blocks=1
                 --output-file ${CMAKE_BINARY_DIR}/coverage.info
-            COMMAND ${LCOV_EXECUTABLE} --summary ${CMAKE_BINARY_DIR}/coverage.info
+            COMMAND ${LCOV_EXECUTABLE}
+                --extract ${CMAKE_BINARY_DIR}/coverage.info "${CMAKE_SOURCE_DIR}/*.cpp"
+                --output-file ${CMAKE_BINARY_DIR}/coverage_filtered.info
+            COMMAND ${LCOV_EXECUTABLE} --summary ${CMAKE_BINARY_DIR}/coverage_filtered.info
             COMMAND ${GENHTML_EXECUTABLE}
-                ${CMAKE_BINARY_DIR}/coverage.info
+                ${CMAKE_BINARY_DIR}/coverage_filtered.info
                 --output-directory ${CMAKE_BINARY_DIR}/coverage_html
             DEPENDS ${NNLIB_TEST_TARGETS}
             WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
