@@ -3,37 +3,9 @@
  */
 
 #include "neuron.h"
-#include <stdio.h>
 
-/*
- * dummy constructor
- */
-Neuron::Neuron ()       {
-	w = NULL;
-	x = NULL;
-	momentum = NULL;
-	inputs = 0;
-	delta = 0;
-	z = 0;
-	y = 0;
-	constant = 0;
-	ni = 0;
-	inertia = 0;
-	activation = NULL;
-	activation_prim = NULL;
-}
-
-Neuron::~Neuron()
-{
-	if (w != NULL)
-		delete [] w;
-
-	if (x != NULL)
-		delete [] x;
-
-	if (momentum != NULL)
-		delete [] momentum;
-}
+#include <cstdlib>
+#include <stdexcept>
 
 /*
  * initialize neuron : random weights, at range min to max, activation function and constant input.
@@ -54,9 +26,9 @@ int Neuron::Initialize (int numb, double minimum, double maximum, int act, doubl
 	y=z=0;
 	
 	inputs=numb;
-	if ((w = new double [inputs+a])==NULL)	return -1;
-	if ((x = new double [inputs+a])==NULL)	return -1;
-	if ((momentum = new double [inputs+a])==NULL)	return -1;
+	w.resize(inputs+a);
+	x.resize(inputs+a);
+	momentum.assign(inputs+a, 0.0);
 
 	if (minimum>maximum) { // afraid of dump users... happen...
 		min=maximum;
@@ -67,11 +39,10 @@ int Neuron::Initialize (int numb, double minimum, double maximum, int act, doubl
 		min=minimum;
 		}
 
-	// randomizing weights loop
-	for (int i=0; i<inputs+a; i++) {
-		double r = (double)rand() / ((double)RAND_MAX + 1.0);
-		*(w+i) = min + ((max - min) * r);
-		*(momentum+i)=0;
+		// randomizing weights loop
+		for (int i=0; i<inputs+a; i++) {
+			double r = static_cast<double>(std::rand()) / (static_cast<double>(RAND_MAX) + 1.0);
+			w[i] = min + ((max - min) * r);
 		}
 
 	if (setActivation(act) == -1)
@@ -89,16 +60,18 @@ int Neuron::Initialize (int numb)	{
 
 }
 
-double Neuron::Train ( double * in) {
+double Neuron::Train(std::span<const double> in) {
+	if (in.size() != static_cast<std::size_t>(inputs))
+		throw std::invalid_argument("Neuron input size does not match initialized input count");
 
 	z=0;
 
 	for (int i=0;i<inputs;i++)	{
-		*(x+i)=*(in+i);
-		z+=(*(x+i)*(*(w+i)));
+		x[i]=in[static_cast<std::size_t>(i)];
+		z+=(x[i]*w[i]);
 		}
 	
-	if (constant)	z+=(*(w+inputs)*constant);
+	if (constant)	z+=(w[inputs]*constant);
 	
 	y = activation (z);
 	return y;
@@ -110,13 +83,13 @@ double Neuron::Modify () {
 	int i;
 		
 	if (constant) {
-		*(w+inputs)+=(ni*delta*constant)+*(momentum+inputs)*inertia;
-		*(momentum+inputs) = (ni*delta*constant);
+		w[inputs]+=(ni*delta*constant)+momentum[inputs]*inertia;
+		momentum[inputs] = (ni*delta*constant);
 	}
 
 	for (i=0;i<inputs;i++) {
-		*(w+i) += (ni*delta*(*(x+i)))+*(momentum+i)*inertia;//*y*(1-y);
-		*(momentum+i) = (ni*delta*(*(x+i)));//+*(momentum+i)*inertia;
+		w[i] += (ni*delta*x[i])+momentum[i]*inertia;//*y*(1-y);
+		momentum[i] = (ni*delta*x[i]);//+*(momentum+i)*inertia;
 		}
 	
 return y;
@@ -125,7 +98,7 @@ return y;
 
 double Neuron::getWeight (int i)	const {
 
-	return *(w+i);
+	return w[i];
 
 }
 

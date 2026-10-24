@@ -23,34 +23,72 @@ The default configuration uses sigmoid activation in hidden layers and linear ac
 
 ## Building
 
-The project includes a Makefile and requires GNU Make and a C++ compiler compatible with the source code.
-
-Build the project:
+The project uses CMake 3.20 or newer and requires a compiler with C++20
+support. The build enforces the C++20 standard (`-std=c++20` or the compiler's
+equivalent). Configure and build the demonstration executable, shared library,
+and static library with:
 
 ```sh
-make
+cmake -S . -B build
+cmake --build build
 ```
 
-The build produces the demonstration executable `demo`, a shared library `libnn.so`, and a static library `libnn.a`.
+The library's input and output buffer APIs use `std::span` and reject spans
+whose sizes do not match the configured network dimensions.
 
 Run the demonstration using the included training data:
 
 ```sh
-./demo < trains
+./build/demo < trains
 ```
 
 An additional dataset, `trains2`, is also included.
 
-Run the test suite:
+## Testing
+
+Tests use GoogleTest. Install its development package before configuring the
+project. On Debian or Ubuntu:
 
 ```sh
-make test
+sudo apt install libgtest-dev
 ```
 
-Remove generated build artifacts:
+Configure and build the project, then run the tests with CTest:
 
 ```sh
-make clean
+cmake -S . -B build
+cmake --build build
+ctest --test-dir build --output-on-failure
+```
+
+## Coverage
+
+Coverage is collected for the neural-network library code, not the test runner
+or demo application. It requires GCC, `gcov`, `lcov`, and `genhtml`. On Debian
+or Ubuntu, install the coverage tools with:
+
+```sh
+sudo apt install lcov
+```
+
+From the project root, run:
+
+```sh
+./build_coverage.sh
+```
+
+The script configures a separate instrumented build, runs the tests, and
+generates the report. Open
+`build-coverage/coverage_html/index.html` for the HTML report. Coverage is
+filtered to the library's `.cpp` implementation files and saved to
+`build-coverage/coverage_filtered.info`; the unfiltered capture is in
+`build-coverage/coverage.info`.
+
+Equivalent manual commands are:
+
+```sh
+cmake -S . -B build-coverage -DCMAKE_BUILD_TYPE=Debug -DNNLIB_ENABLE_COVERAGE=ON
+cmake --build build-coverage --target coverage
 ```
 
 ## Source code
@@ -64,7 +102,11 @@ The implementation is organized into a few core components:
 | `activation.h`, `activation.cpp` | Activation functions |
 | `neuralnet.h`, `neuralnet.cpp` | Network construction, propagation and training |
 | `main.cpp` | Demonstration program |
-| `tests/` | Tests for the implementation |
+| `tests/test_activation.cpp` | Activation function tests |
+| `tests/test_neuron.cpp` | Neuron unit tests |
+| `tests/test_layer.cpp` | Layer unit tests |
+| `tests/test_neuralnet.cpp` | Network API tests |
+| `tests/test_neuralnet_scenarios.cpp` | End-to-end network training scenarios |
 
 The code is small enough to follow from the individual neuron calculations through layer processing to network training.
 
