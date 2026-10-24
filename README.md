@@ -1,6 +1,6 @@
 # nnlib
 
-A small C++ neural network library, originally written around 2001.
+A small C++ neural network library.
 
 ## About
 
