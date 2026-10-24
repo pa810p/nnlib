@@ -71,4 +71,23 @@ TEST(NeuralLayerTest, AppliesActivationToAllNeurons) {
 
     EXPECT_EQ(layer.setActivation(ACT_SIGMOID), 0);
     EXPECT_EQ(layer.setActivation(999), -1);
+    EXPECT_EQ(layer.setActivation(act_linear, nullptr), -1);
+}
+
+TEST(NeuralLayerTest, RejectsNonPositiveLayerOrInputSizes) {
+    NeuralLayer zero_neurons;
+    NeuralLayer negative_neurons;
+    NeuralLayer zero_inputs;
+    NeuralLayer negative_inputs;
+
+    EXPECT_EQ(zero_neurons.Initialize(0, 1, 0.5, 0.5, ACT_LINEAR, 0.0, 0.1), -1);
+    EXPECT_EQ(negative_neurons.Initialize(-1, 1, 0.5, 0.5, ACT_LINEAR, 0.0, 0.1), -1);
+    EXPECT_EQ(zero_inputs.Initialize(1, 0, 0.5, 0.5, ACT_LINEAR, 0.0, 0.1), -1);
+    EXPECT_EQ(negative_inputs.Initialize(1, -1, 0.5, 0.5, ACT_LINEAR, 0.0, 0.1), -1);
+}
+
+TEST(NeuralLayerTest, PropagatesNeuronInitializationFailure) {
+    NeuralLayer layer;
+
+    EXPECT_EQ(layer.Initialize(1, 1, 0.5, 0.5, 999, 0.0, 0.1), -1);
 }

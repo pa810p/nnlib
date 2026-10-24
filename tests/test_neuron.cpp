@@ -44,3 +44,16 @@ TEST(NeuronTest, SupportsCustomActivationFunctions) {
     EXPECT_EQ(neuron.setActivation(nullptr, act_sigmoid_prim), -1);
     EXPECT_EQ(neuron.setActivation(act_sigmoid, nullptr), -1);
 }
+
+TEST(NeuronTest, RejectsUnknownActivationDuringInitialization) {
+    Neuron neuron;
+
+    EXPECT_EQ(neuron.Initialize(1, 0.5, 0.5, 999, 0.0, 0.1), -1);
+}
+
+TEST(NeuronTest, RejectsUnknownActivationWhenSettingActivation) {
+    Neuron neuron;
+    ASSERT_EQ(neuron.Initialize(1, 0.5, 0.5, ACT_LINEAR, 0.0, 0.1), 0);
+
+    EXPECT_EQ(neuron.setActivation(999), -1);
+}

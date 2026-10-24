@@ -7,10 +7,13 @@
 TEST(NeuralNetApiTest, RejectsInvalidConstructorArguments) {
     int valid_size[] = {1};
     int invalid_size[] = {0};
+    int negative_size[] = {-1};
 
     EXPECT_THROW(NeuralNet(0, valid_size, 1), std::invalid_argument);
+    EXPECT_THROW(NeuralNet(1, nullptr, 1), std::invalid_argument);
     EXPECT_THROW(NeuralNet(1, valid_size, 0), std::invalid_argument);
     EXPECT_THROW(NeuralNet(1, invalid_size, 1), std::invalid_argument);
+    EXPECT_THROW(NeuralNet(1, negative_size, 1), std::invalid_argument);
 }
 
 TEST(NeuralNetApiTest, ValidatesActivationLayerAndFunction) {
