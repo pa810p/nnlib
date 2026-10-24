@@ -1,0 +1,9 @@
+*.o
+*.a
+*.so
+/demo
+/test_nn
+/pynnlib/
+__pycache__/
+*.py[cod]
+.pytest_cache/
